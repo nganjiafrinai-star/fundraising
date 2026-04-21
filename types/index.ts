@@ -20,7 +20,7 @@ export interface Sponsor {
 
 export interface SponsorDonation {
   id: string;
-  sponsorId: string;
+  sponsorId?: string;
   companyName: string;
   companyEmail: string;
   amount: number;
@@ -54,6 +54,7 @@ export interface DashboardStats {
   totalCollected: number;
   donorCount: number;
   goalAmount: number;
+  donorsGoal: number;
   progressPercentage: number;
 }
 
@@ -66,6 +67,7 @@ export interface AdminStats {
   byPaymentMethod: { name: string; value: number }[];
   globalGoal: number;
   campaignTotal: number;
+  evolution: { date: string; amount: number }[];
 }
 
 export interface Note {

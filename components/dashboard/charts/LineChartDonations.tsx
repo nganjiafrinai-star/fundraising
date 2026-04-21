@@ -3,17 +3,11 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 
-const data = [
-  { date: '01/04', amount: 400000 },
-  { date: '05/04', amount: 800000 },
-  { date: '10/04', amount: 2000000 },
-  { date: '15/04', amount: 4500000 },
-  { date: '20/04', amount: 8900000 },
-  { date: '25/04', amount: 15000000 },
-  { date: '30/04', amount: 21500000 },
-];
+interface LineChartDonationsProps {
+  data: { date: string; amount: number }[];
+}
 
-export const LineChartDonations = () => {
+export const LineChartDonations = ({ data }: LineChartDonationsProps) => {
   return (
     <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">

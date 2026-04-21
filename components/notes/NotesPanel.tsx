@@ -6,6 +6,7 @@ import { NoteItem } from './NoteItem';
 import { NoteForm } from './NoteForm';
 import { Search, Plus, StickyNote } from 'lucide-react';
 import { Button } from '../ui';
+import { getNotes, createNote, updateNote, deleteNote } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 export const NotesPanel = () => {
@@ -13,76 +14,76 @@ export const NotesPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
-  const [volunteerId, setVolunteerId] = useState<string>('');
+  const [loading, setLoading] = useState(true);
 
-  // Load notes from localStorage
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      setVolunteerId(user.id);
-      
-      const storedNotes = localStorage.getItem(`notes_${user.id}`);
-      if (storedNotes) {
-        setNotes(JSON.parse(storedNotes));
-      }
+  // Load notes from API
+  const fetchNotes = async () => {
+    try {
+      const data = await getNotes();
+      setNotes(data);
+    } catch (error) {
+      console.error(error);
+      toast.error('Impossible de charger les notes');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchNotes();
   }, []);
 
-  // Save notes to localStorage
-  const saveToStorage = (updatedNotes: Note[]) => {
-    setNotes(updatedNotes);
-    if (volunteerId) {
-      localStorage.setItem(`notes_${volunteerId}`, JSON.stringify(updatedNotes));
+  const handleAddNote = async (data: Partial<Note>) => {
+    try {
+      await createNote({
+        title: data.title || '',
+        content: data.content || '',
+        isPinned: false
+      });
+      fetchNotes();
+      setIsFormOpen(false);
+      toast.success('Note enregistrée !');
+    } catch (error) {
+       toast.error('Erreur lors de la création');
     }
   };
 
-  const handleAddNote = (data: Partial<Note>) => {
-    const newNote: Note = {
-      id: Math.random().toString(36).substr(2, 9),
-      volunteerId,
-      title: data.title || '',
-      content: data.content || '',
-      isPinned: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    // TODO: POST /api/notes
-    saveToStorage([newNote, ...notes]);
-    setIsFormOpen(false);
-    toast.success('Note enregistrée !');
-  };
-
-  const handleUpdateNote = (data: Partial<Note>) => {
+  const handleUpdateNote = async (data: Partial<Note>) => {
     if (!editingNote) return;
     
-    const updatedNotes = notes.map(n => 
-      n.id === editingNote.id 
-        ? { ...n, ...data, updatedAt: new Date().toISOString() } 
-        : n
-    );
-    
-    // TODO: PUT /api/notes/:id
-    saveToStorage(updatedNotes);
-    setEditingNote(null);
-    setIsFormOpen(false);
-    toast.success('Note mise à jour !');
-  };
-
-  const handleDeleteNote = (id: string) => {
-    if (confirm('Voulez-vous vraiment supprimer cette note ?')) {
-      const updatedNotes = notes.filter(n => n.id !== id);
-      // TODO: DELETE /api/notes/:id
-      saveToStorage(updatedNotes);
+    try {
+      await updateNote(editingNote.id, data);
+      fetchNotes();
+      setEditingNote(null);
+      setIsFormOpen(false);
+      toast.success('Note mise à jour !');
+    } catch (error) {
+        toast.error('Erreur lors de la mise à jour');
     }
   };
 
-  const handleTogglePin = (id: string) => {
-    const updatedNotes = notes.map(n => 
-      n.id === id ? { ...n, isPinned: !n.isPinned } : n
-    );
-    saveToStorage(updatedNotes);
+  const handleDeleteNote = async (id: string) => {
+    if (confirm('Voulez-vous vraiment supprimer cette note ?')) {
+      try {
+        await deleteNote(id);
+        setNotes(notes.filter(n => n.id !== id));
+        toast.success('Note supprimée');
+      } catch (error) {
+        toast.error('Erreur lors de la suppression');
+      }
+    }
+  };
+
+  const handleTogglePin = async (id: string) => {
+    const note = notes.find(n => n.id === id);
+    if (!note) return;
+    
+    try {
+      await updateNote(id, { isPinned: !note.isPinned });
+      setNotes(notes.map(n => n.id === id ? { ...n, isPinned: !n.isPinned } : n));
+    } catch (error) {
+        toast.error('Erreur lors de l’épinglage');
+    }
   };
 
   const filteredNotes = notes.filter(n => 

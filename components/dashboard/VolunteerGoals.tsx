@@ -22,7 +22,7 @@ export const VolunteerGoals = ({ stats, onUpdate }: VolunteerGoalsProps) => {
     resolver: zodResolver(goalsSchema) as any,
     defaultValues: {
       amountGoal: stats?.goalAmount || 0,
-      donorsGoal: 10, // Mock default for donors goal
+      donorsGoal: stats?.donorsGoal || 0,
     }
   });
 

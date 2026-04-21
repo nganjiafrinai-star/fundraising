@@ -193,7 +193,10 @@ export default function VolunteerDashboard() {
                     </div>
                   </div>
                   <Card className="p-2 md:p-6">
-                    <DonorList donors={filteredDonors} />
+                    <DonorList 
+                      donors={filteredDonors} 
+                      onUpdate={() => fetchData(user.id, activePeriod)} 
+                    />
                   </Card>
                 </div>
 

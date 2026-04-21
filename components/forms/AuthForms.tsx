@@ -31,16 +31,13 @@ export const SignupForm = () => {
 
 
   const onSubmit: SubmitHandler<VolunteerFormData> = async (data) => {
-    // TODO: valider aussi côté backend (Express)
     try {
-      const user = await signupVolunteer({
-        ...data,
-      });
+      const user = await signupVolunteer(data);
       toast.success('🎉 Inscription réussie ! Bienvenue.');
       localStorage.setItem('user', JSON.stringify(user));
       router.push('/dashboard/volunteer');
-    } catch (error) {
-      toast.error('❌ Une erreur est survenue');
+    } catch (error: any) {
+      toast.error(error.message || '❌ Une erreur est survenue');
       console.error(error);
     }
   };
@@ -103,7 +100,7 @@ export const SignupForm = () => {
 export const LoginForm = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [role, setRole] = useState<'volunteer' | 'admin' | 'sponsor'>('volunteer');
+  const [role, setRole] = useState<'volunteer' | 'admin'>('volunteer');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -116,36 +113,19 @@ export const LoginForm = () => {
     
     try {
       if (role === 'admin') {
-        const ADMIN_PASSWORD = "amiel2007";
-        if (password === ADMIN_PASSWORD) {
-          localStorage.setItem('user', JSON.stringify({ email: 'admin@nova.io', role: 'admin' }));
-          router.push('/dashboard/admin');
-        } else {
-          setError('Mot de passe incorrect');
-        }
-      } else if (role === 'sponsor') {
-        const { loginSponsor } = await import('@/lib/api');
-        const user = await loginSponsor(email);
-        // Simulating password check
-        if (user && (password === "123456" || password === "password123")) {
-          localStorage.setItem('user', JSON.stringify(user));
-          router.push('/dashboard/sponsor');
-        } else {
-          setError('Identifiants invalides pour sponsor');
-        }
+        const { loginAdmin } = await import('@/lib/api');
+        const user = await loginAdmin(password);
+        localStorage.setItem('user', JSON.stringify(user));
+        router.push('/dashboard/admin');
       } else {
         // Volunteer login
         const { loginVolunteer } = await import('@/lib/api');
-        const user = await loginVolunteer(email);
-        if (user) {
-          localStorage.setItem('user', JSON.stringify(user));
-          router.push('/dashboard/volunteer');
-        } else {
-          setError('Email non trouvé. Veuillez vous inscrire.');
-        }
+        const user = await loginVolunteer(email, password);
+        localStorage.setItem('user', JSON.stringify(user));
+        router.push('/dashboard/volunteer');
       }
-    } catch (err) {
-      setError('Une erreur est survenue');
+    } catch (err: any) {
+      setError(err.message || 'Une erreur est survenue');
     } finally {
       setLoading(false);
     }
@@ -156,35 +136,39 @@ export const LoginForm = () => {
       <div className="flex p-1 bg-gray-100 rounded-lg">
         <button
           onClick={() => setRole('volunteer')}
-          className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${role === 'volunteer' ? 'bg-white text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${role === 'volunteer' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
         >
           Volontaire
         </button>
         <button
           onClick={() => setRole('admin')}
-          className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${role === 'admin' ? 'bg-white text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${role === 'admin' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
         >
           Administrateur
-        </button>
-        <button
-          onClick={() => setRole('sponsor')}
-          className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${role === 'sponsor' ? 'bg-white text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          Sponsor
         </button>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {role === 'volunteer' ? (
-          <Input
-            label="Email"
-            type="email"
-            placeholder="jean@example.com"
-            required
-            value={email}
-            onChange={(e: any) => setEmail(e.target.value)}
-          />
-        ) : role === 'admin' ? (
+          <>
+            <Input
+              label="Email"
+              type="email"
+              placeholder="jean@example.com"
+              required
+              value={email}
+              onChange={(e: any) => setEmail(e.target.value)}
+            />
+            <Input
+              label="Mot de passe"
+              type="password"
+              placeholder="••••••••"
+              required
+              value={password}
+              onChange={(e: any) => setPassword(e.target.value)}
+            />
+          </>
+        ) : (
           <>
             <Input
               label="Email Admin"
@@ -201,95 +185,15 @@ export const LoginForm = () => {
               onChange={(e: any) => setPassword(e.target.value)}
             />
           </>
-        ) : (
-          <>
-            <Input
-              label="Email Sponsor"
-              type="email"
-              placeholder="contact@novasoft.net"
-              required
-              value={email}
-              onChange={(e: any) => setEmail(e.target.value)}
-            />
-            <Input
-              label="Mot de passe"
-              type="password"
-              placeholder="••••••••"
-              required
-              value={password}
-              onChange={(e: any) => setPassword(e.target.value)}
-            />
-          </>
         )}
         
         {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
-
 
         <Button type="submit" disabled={loading} className="w-full mt-2">
           {loading ? 'Connexion...' : 'Se connecter'}
         </Button>
       </form>
     </div>
-  );
-};
-
-export const SponsorLoginForm = () => {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    
-    try {
-      const { loginSponsor } = await import('@/lib/api');
-      const sponsor = await loginSponsor(email);
-      
-      // Simulating password check (in a real app, this is done backend)
-      if (sponsor && (password === "123456" || password === "password123")) {
-        localStorage.setItem('user', JSON.stringify(sponsor));
-        toast.success(`Bienvenue, ${sponsor.name} !`);
-        router.push('/dashboard/sponsor');
-      } else {
-        setError('Identifiants invalides');
-      }
-    } catch (err) {
-      setError('Une erreur est survenue');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <Input
-        label="Email Entreprise"
-        type="email"
-        placeholder="contact@novasoft.net"
-        required
-        value={email}
-        onChange={(e: any) => setEmail(e.target.value)}
-      />
-
-      <Input
-        label="Mot de passe"
-        type="password"
-        placeholder="••••••••"
-        required
-        value={password}
-        onChange={(e: any) => setPassword(e.target.value)}
-      />
-      
-      {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
-
-      <Button type="submit" disabled={loading} className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700">
-        {loading ? 'Connexion...' : 'Se connecter en tant que Sponsor'}
-      </Button>
-    </form>
   );
 };
 

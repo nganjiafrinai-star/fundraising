@@ -14,6 +14,7 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { AdminOverview } from '@/components/dashboard/AdminOverview';
 import { VolunteerList } from '@/components/dashboard/VolunteerList';
 import { SponsorList } from '@/components/dashboard/SponsorList';
+import { SponsorPaymentForm } from '@/components/dashboard/SponsorPaymentForm';
 import { SearchFilter } from '@/components/filters/SearchFilter';
 import { DateFilter } from '@/components/filters/DateFilter';
 import { AdvancedFilters } from '@/components/filters/AdvancedFilters';
@@ -171,7 +172,7 @@ export default function AdminDashboard() {
               <div className="flex justify-between items-center">
                 <DateFilter activePeriod={activePeriod} onFilterChange={setActivePeriod} />
               </div>
-              <AdminOverview stats={stats} />
+              <AdminOverview stats={stats} onUpdate={() => fetchData(activePeriod)} />
             </div>
           )}
           
@@ -195,18 +196,28 @@ export default function AdminDashboard() {
                 />
               </div>
               <Card title={`Registre des Donateurs (${filteredDonors.length})`}>
-                <DonorList donors={filteredDonors} />
+                <DonorList 
+                  donors={filteredDonors} 
+                  onUpdate={() => fetchData(activePeriod)} 
+                />
               </Card>
             </div>
           )}
 
           {currentView === 'sponsors' && (
             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-              <div className="flex flex-col gap-2">
-                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Partenaires Corporate</h2>
-                <p className="text-slate-500">Liste des entreprises et sponsors enregistrés.</p>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex flex-col gap-2">
+                  <h2 className="text-2xl font-black text-slate-800 tracking-tight">Partenaires Corporate</h2>
+                  <p className="text-slate-500">Liste des entreprises et sponsors enregistrés.</p>
+                </div>
+                <SponsorPaymentForm onPaymentAdded={() => fetchData(activePeriod)} />
               </div>
-              <SponsorList sponsors={sponsors} donations={sponsorDonations} />
+              <SponsorList 
+                sponsors={sponsors} 
+                donations={sponsorDonations} 
+                onUpdate={() => fetchData(activePeriod)} 
+              />
             </div>
           )}
 

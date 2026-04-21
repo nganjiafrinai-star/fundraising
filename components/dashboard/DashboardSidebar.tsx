@@ -37,13 +37,9 @@ export const DashboardSidebar = ({
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         <div className="p-6">
-          <div className="flex items-center gap-3 mb-8">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white ${variant === 'admin' ? 'bg-blue-600' : 'bg-indigo-600'}`}>
-              {variant === 'admin' ? <LayoutDashboard className="w-5 h-5" /> : <Zap className="w-5 h-5 fill-current" />}
-            </div>
-            <span className="text-xl font-black tracking-tight text-slate-800">
-              {variant === 'admin' ? 'Admin Panel' : 'TTN Connect'}
-            </span>
+          <div className="flex flex-col items-center gap-1 mb-8">
+            <img src="/logo.png" alt="Logo" className="h-16 w-auto" />
+            <div className="h-0.5 w-12 bg-slate-100 rounded-full mt-2" />
           </div>
           
           <nav className="space-y-1">

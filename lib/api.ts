@@ -1,247 +1,199 @@
-import { MOCK_VOLUNTEERS, MOCK_DONORS, MOCK_SPONSORS, MOCK_SPONSOR_DONATIONS } from './mock-data';
 import { Volunteer, Donor, AdminStats, DashboardStats, Sponsor, SponsorDonation } from '../types';
 
-// System Simulation for persistence (using localStorage)
-const getStoredDonors = (): Donor[] => {
-  if (typeof window === 'undefined') return MOCK_DONORS;
-  const stored = localStorage.getItem('donors');
-  return stored ? JSON.parse(stored) : MOCK_DONORS;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+// Helper to get token from localStorage
+const getAuthHeaders = () => {
+  if (typeof window === 'undefined') return {};
+  const userJson = localStorage.getItem('user');
+  if (!userJson) return {};
+  try {
+    const user = JSON.parse(userJson);
+    return user.token ? { 'Authorization': `Bearer ${user.token}` } : {};
+  } catch (e) {
+    return {};
+  }
 };
 
-const setStoredDonors = (donors: Donor[]) => {
-  localStorage.setItem('donors', JSON.stringify(donors));
-};
+// Generic fetcher
+async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...getAuthHeaders(),
+    ...(options.headers || {}),
+  } as any;
 
-const getStoredVolunteers = (): Volunteer[] => {
-  if (typeof window === 'undefined') return MOCK_VOLUNTEERS;
-  const stored = localStorage.getItem('volunteers');
-  return stored ? JSON.parse(stored) : MOCK_VOLUNTEERS;
-};
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
 
-const setStoredVolunteers = (volunteers: Volunteer[]) => {
-  localStorage.setItem('volunteers', JSON.stringify(volunteers));
-};
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Une erreur est survenue' }));
+    throw new Error(error.message || `HTTP error! status: ${response.status}`);
+  }
 
-const getStoredSponsors = (): Sponsor[] => {
-  if (typeof window === 'undefined') return MOCK_SPONSORS;
-  const stored = localStorage.getItem('sponsors');
-  return stored ? JSON.parse(stored) : MOCK_SPONSORS;
-};
+  const data = await response.json();
+  
+  // Map _id to id if necessary
+  if (Array.isArray(data)) {
+    return data.map(item => ({ ...item, id: item._id || item.id })) as unknown as T;
+  } else if (data && typeof data === 'object') {
+    return { ...data, id: data._id || data.id } as unknown as T;
+  }
+  
+  return data as T;
+}
 
-const getStoredSponsorDonations = (): SponsorDonation[] => {
-  if (typeof window === 'undefined') return MOCK_SPONSOR_DONATIONS;
-  const stored = localStorage.getItem('sponsorDonations');
-  return stored ? JSON.parse(stored) : MOCK_SPONSOR_DONATIONS;
-};
-
-const setStoredSponsorDonations = (donations: SponsorDonation[]) => {
-  localStorage.setItem('sponsorDonations', JSON.stringify(donations));
-};
-
-export const signupVolunteer = async (data: Omit<Volunteer, 'id' | 'role'>): Promise<Volunteer> => {
-  // TODO: remplacer par appel API Express (POST /api/auth/signup)
-  const newVolunteer: Volunteer = {
-    ...data,
-    id: `v${Date.now()}`,
-    role: 'volunteer'
+export const registerUser = async (data: any): Promise<any> => {
+    return apiFetch<any>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   };
-  const volunteers = getStoredVolunteers();
-  setStoredVolunteers([...volunteers, newVolunteer]);
-  return newVolunteer;
+
+export const signupVolunteer = async (data: any): Promise<Volunteer> => {
+  return registerUser({ ...data, role: 'volunteer' });
 };
 
-export const loginVolunteer = async (email: string): Promise<Volunteer | null> => {
-  // TODO: remplacer par appel API Express (POST /api/auth/login)
-  const volunteers = getStoredVolunteers();
-  return volunteers.find(v => v.email === email) || null;
+export const loginVolunteer = async (email: string, password?: string): Promise<Volunteer & { token: string }> => {
+  return apiFetch<Volunteer & { token: string }>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password: password || 'password123' }),
+  });
 };
 
-export const loginSponsor = async (email: string): Promise<Sponsor | null> => {
-  // TODO: remplacer par appel API Express (POST /api/auth/sponsor-login)
-  const sponsors = getStoredSponsors();
-  return sponsors.find(s => s.email === email) || null;
+export const loginSponsor = async (email: string, password?: string): Promise<Sponsor & { token: string }> => {
+  return apiFetch<Sponsor & { token: string }>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password: password || 'password123' }),
+  });
 };
 
-export const loginAdmin = async (password: string): Promise<boolean> => {
-  // TODO: remplacer par appel API Express (POST /api/auth/admin-login)
-  const ADMIN_PASSWORD = "amiel2007";
-  return password === ADMIN_PASSWORD;
+export const loginAdmin = async (password: string): Promise<any> => {
+    // We use common login route
+    return apiFetch<any>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'admin@nova.io', password }),
+    });
 };
 
 export const getVolunteers = async (): Promise<Volunteer[]> => {
-  // TODO: remplacer par appel API Express (GET /api/volunteers)
-  return getStoredVolunteers();
+  return apiFetch<Volunteer[]>('/users?role=volunteer');
 };
 
 export const getDonors = async (volunteerId?: string): Promise<Donor[]> => {
-  // TODO: remplacer par appel API Express (GET /api/donors)
-  const donors = getStoredDonors();
-  if (volunteerId) {
-    return donors.filter(d => d.volunteerId === volunteerId);
+  const userJson = localStorage.getItem('user');
+  const user = userJson ? JSON.parse(userJson) : null;
+  
+  if (user?.role === 'admin') {
+    return apiFetch<Donor[]>('/donors/all');
   }
-  return donors;
+  return apiFetch<Donor[]>('/donors');
 };
 
 export const createDonor = async (data: Omit<Donor, 'id' | 'date'>): Promise<Donor> => {
-  // TODO: remplacer par appel API Express (POST /api/donors)
-  const newDonor: Donor = {
-    ...data,
-    id: `d${Date.now()}`,
-    date: new Date().toISOString().split('T')[0]
-  };
-  const donors = getStoredDonors();
-  setStoredDonors([...donors, newDonor]);
-  return newDonor;
+  return apiFetch<Donor>('/donors', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 };
 
-export const getDashboardStats = async (volunteerId: string, period: 'today' | 'week' | 'month' | 'all' = 'all'): Promise<DashboardStats> => {
-  // TODO: remplacer par appel API Express (GET /api/stats/volunteer/:id?period=...)
-  const volunteers = getStoredVolunteers();
-  const volunteer = volunteers.find(v => v.id === volunteerId);
-  let donors = getStoredDonors().filter(d => d.volunteerId === volunteerId);
-
-  if (period !== 'all') {
-    const now = new Date();
-    donors = donors.filter(d => {
-      const dDate = new Date(d.date);
-      if (period === 'today') return dDate.toDateString() === now.toDateString();
-      if (period === 'week') {
-        const weekAgo = new Date();
-        weekAgo.setDate(now.getDate() - 7);
-        return dDate >= weekAgo;
-      }
-      if (period === 'month') {
-        return dDate.getMonth() === now.getMonth() && dDate.getFullYear() === now.getFullYear();
-      }
-      return true;
-    });
-  }
-
-  const totalCollected = donors.reduce((acc, d) => acc + d.amount, 0);
-  const goalAmount = volunteer?.amountGoal || 0;
-
-  return {
-    totalCollected,
-    donorCount: donors.length,
-    goalAmount,
-    progressPercentage: goalAmount > 0 ? (totalCollected / goalAmount) * 100 : 0
-  };
+export const getDashboardStats = async (volunteerId: string, period: string = 'all'): Promise<DashboardStats> => {
+  return apiFetch<DashboardStats>(`/stats/dashboard?period=${period}`);
 };
 
-export const getAdminStats = async (period: 'today' | 'week' | 'month' | 'all' = 'all'): Promise<AdminStats> => {
-  // TODO: remplacer par appel API Express (GET /api/stats/admin?period=...)
-  const allDonors = getStoredDonors();
-  const allSponsorDonations = getStoredSponsorDonations();
-  const volunteers = getStoredVolunteers();
-
-  let donors = [...allDonors];
-  let sponsorDonations = [...allSponsorDonations];
-
-  if (period !== 'all') {
-    const now = new Date();
-    const filterByPeriod = (item: { date: string }) => {
-      const dDate = new Date(item.date);
-      if (period === 'today') return dDate.toDateString() === now.toDateString();
-      if (period === 'week') {
-        const weekAgo = new Date();
-        weekAgo.setDate(now.getDate() - 7);
-        return dDate >= weekAgo;
-      }
-      if (period === 'month') {
-        return dDate.getMonth() === now.getMonth() && dDate.getFullYear() === now.getFullYear();
-      }
-      return true;
-    };
-
-    donors = donors.filter(filterByPeriod);
-    sponsorDonations = sponsorDonations.filter(filterByPeriod);
-  }
-
-  const totalGlobalCollected = donors.reduce((acc, d) => acc + d.amount, 0) + 
-                             sponsorDonations.reduce((acc, sd) => acc + sd.amount, 0);
-
-  const campaignTotal = allDonors.reduce((acc, d) => acc + d.amount, 0) + 
-                      allSponsorDonations.reduce((acc, sd) => acc + sd.amount, 0);
-  
-  const rankings = volunteers.map((v, idx) => ({
-    id: v.id || `v-rank-${idx}`,
-    name: v.name,
-    amount: allDonors.filter(d => d.volunteerId === v.id).reduce((acc, d) => acc + d.amount, 0)
-  })).sort((a, b) => b.amount - a.amount);
-
-
-
-  const methods = [...new Set([
-    ...allDonors.map(d => d.paymentMethod),
-    ...allSponsorDonations.map(sd => sd.paymentMethod)
-  ])];
-  const byPaymentMethod = methods.map(m => ({
-    name: m,
-    value: allDonors.filter(d => d.paymentMethod === m).reduce((acc, d) => acc + d.amount, 0) +
-           allSponsorDonations.filter(sd => sd.paymentMethod === m).reduce((acc, sd) => acc + sd.amount, 0)
-  })).sort((a, b) => b.value - a.value);
-
-  const channels = [...new Set(donors.map(d => d.channel))];
-  const byChannel = channels.map(c => ({
-    name: c,
-    value: donors.filter(d => d.channel === c).length
-  }));
-
-  return {
-    totalGlobalCollected,
-    campaignTotal,
-    totalDonors: donors.length,
-    totalVolunteers: volunteers.length,
-    rankings,
-    byChannel,
-    byPaymentMethod,
-    globalGoal: 32000000 // Goal of 32M BIF
-  };
+export const getAdminStats = async (period: string = 'all'): Promise<AdminStats> => {
+  return apiFetch<AdminStats>(`/stats/admin?period=${period}`);
 };
-
 
 export const updateVolunteerGoals = async (volunteerId: string, data: { amountGoal: number, donorsGoal: number }): Promise<void> => {
-  // TODO: remplacer par appel API Express (PATCH /api/volunteers/:id)
-  const volunteers = getStoredVolunteers();
-  const updatedVolunteers = volunteers.map(v =>
-    v.id === volunteerId ? { ...v, amountGoal: data.amountGoal, donorsGoal: data.donorsGoal } : v
-  );
-  setStoredVolunteers(updatedVolunteers);
-
-  // Update local session if needed
-  const storedUser = localStorage.getItem('user');
-  if (storedUser) {
-    const u = JSON.parse(storedUser);
-    if (u.id === volunteerId) {
-      localStorage.setItem('user', JSON.stringify({ ...u, ...data }));
-    }
-  }
+  // Note: Backend might restrict this to admin only currently.
+  return apiFetch<void>(`/users/${volunteerId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
 };
 
 export const getSponsors = async (): Promise<Sponsor[]> => {
-  // TODO: remplacer par appel API Express (GET /api/sponsors)
-  return getStoredSponsors();
+  return apiFetch<Sponsor[]>('/users?role=sponsor');
 };
 
 export const getAllSponsorDonations = async (): Promise<SponsorDonation[]> => {
-  // TODO: remplacer par appel API Express (GET /api/sponsor-donations)
-  return getStoredSponsorDonations();
+  const userJson = localStorage.getItem('user');
+  const user = userJson ? JSON.parse(userJson) : null;
+  
+  if (user?.role === 'admin') {
+    return apiFetch<SponsorDonation[]>('/sponsor-donations/all');
+  }
+  return apiFetch<SponsorDonation[]>('/sponsor-donations');
 };
 
 export const getSponsorDonations = async (sponsorId: string): Promise<SponsorDonation[]> => {
-  // TODO: remplacer par appel API Express (GET /api/sponsor/:id/donations)
-  const donations = getStoredSponsorDonations();
-  return donations.filter(d => d.sponsorId === sponsorId);
+  const userJson = localStorage.getItem('user');
+  const user = userJson ? JSON.parse(userJson) : null;
+  
+  if (user?.role === 'admin') {
+    return apiFetch<SponsorDonation[]>('/sponsor-donations/all');
+  }
+  return apiFetch<SponsorDonation[]>('/sponsor-donations');
 };
 
 export const createSponsorDonation = async (data: Omit<SponsorDonation, 'id' | 'date'>): Promise<SponsorDonation> => {
-  // TODO: remplacer par appel API Express (POST /api/sponsor-donations)
-  const newDonation: SponsorDonation = {
-    ...data,
-    id: `sd${Date.now()}`,
-    date: new Date().toISOString().split('T')[0]
-  };
-  const donations = getStoredSponsorDonations();
-  setStoredSponsorDonations([...donations, newDonation]);
-  return newDonation;
+  return apiFetch<SponsorDonation>('/sponsor-donations', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 };
+
+// Note functions
+export const getNotes = async (): Promise<any[]> => {
+    return apiFetch<any[]>('/notes');
+};
+
+export const createNote = async (data: { title: string, content: string, isPinned?: boolean }): Promise<any> => {
+    return apiFetch<any>('/notes', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+};
+
+export const updateNote = async (id: string, data: { title?: string, content?: string, isPinned?: boolean }): Promise<any> => {
+    return apiFetch<any>(`/notes/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    });
+};
+
+export const deleteNote = async (id: string): Promise<void> => {
+    return apiFetch<void>(`/notes/${id}`, {
+        method: 'DELETE',
+    });
+};
+
+export const updateDonor = async (id: string, data: Partial<Donor>): Promise<Donor> => {
+    return apiFetch<Donor>(`/donors/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    });
+};
+
+export const updateSponsorDonation = async (id: string, data: Partial<SponsorDonation>): Promise<SponsorDonation> => {
+    return apiFetch<SponsorDonation>(`/sponsor-donations/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    });
+};
+
+// Settings functions
+export const getSettings = async (): Promise<any> => {
+    return apiFetch<any>('/settings');
+};
+
+export const updateSettings = async (data: { globalGoal?: number, campaignName?: string }): Promise<any> => {
+    return apiFetch<any>('/settings', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    });
+};
+
