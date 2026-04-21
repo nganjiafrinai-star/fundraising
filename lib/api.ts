@@ -1,6 +1,6 @@
 import { Volunteer, Donor, AdminStats, DashboardStats, Sponsor, SponsorDonation } from '../types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://fundraising-backend-9f6t.onrender.com/api';
 
 // Helper to get token from localStorage
 const getAuthHeaders = () => {
@@ -34,23 +34,23 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
   }
 
   const data = await response.json();
-  
+
   // Map _id to id if necessary
   if (Array.isArray(data)) {
     return data.map(item => ({ ...item, id: item._id || item.id })) as unknown as T;
   } else if (data && typeof data === 'object') {
     return { ...data, id: data._id || data.id } as unknown as T;
   }
-  
+
   return data as T;
 }
 
 export const registerUser = async (data: any): Promise<any> => {
-    return apiFetch<any>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  };
+  return apiFetch<any>('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
 
 export const signupVolunteer = async (data: any): Promise<Volunteer> => {
   return registerUser({ ...data, role: 'volunteer' });
@@ -71,11 +71,11 @@ export const loginSponsor = async (email: string, password?: string): Promise<Sp
 };
 
 export const loginAdmin = async (password: string): Promise<any> => {
-    // We use common login route
-    return apiFetch<any>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email: 'admin@nova.io', password }),
-    });
+  // We use common login route
+  return apiFetch<any>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email: 'ttnmission@contact.com', password }),
+  });
 };
 
 export const getVolunteers = async (): Promise<Volunteer[]> => {
@@ -85,7 +85,7 @@ export const getVolunteers = async (): Promise<Volunteer[]> => {
 export const getDonors = async (volunteerId?: string): Promise<Donor[]> => {
   const userJson = localStorage.getItem('user');
   const user = userJson ? JSON.parse(userJson) : null;
-  
+
   if (user?.role === 'admin') {
     return apiFetch<Donor[]>('/donors/all');
   }
@@ -122,7 +122,7 @@ export const getSponsors = async (): Promise<Sponsor[]> => {
 export const getAllSponsorDonations = async (): Promise<SponsorDonation[]> => {
   const userJson = localStorage.getItem('user');
   const user = userJson ? JSON.parse(userJson) : null;
-  
+
   if (user?.role === 'admin') {
     return apiFetch<SponsorDonation[]>('/sponsor-donations/all');
   }
@@ -132,7 +132,7 @@ export const getAllSponsorDonations = async (): Promise<SponsorDonation[]> => {
 export const getSponsorDonations = async (sponsorId: string): Promise<SponsorDonation[]> => {
   const userJson = localStorage.getItem('user');
   const user = userJson ? JSON.parse(userJson) : null;
-  
+
   if (user?.role === 'admin') {
     return apiFetch<SponsorDonation[]>('/sponsor-donations/all');
   }
@@ -148,52 +148,52 @@ export const createSponsorDonation = async (data: Omit<SponsorDonation, 'id' | '
 
 // Note functions
 export const getNotes = async (): Promise<any[]> => {
-    return apiFetch<any[]>('/notes');
+  return apiFetch<any[]>('/notes');
 };
 
 export const createNote = async (data: { title: string, content: string, isPinned?: boolean }): Promise<any> => {
-    return apiFetch<any>('/notes', {
-        method: 'POST',
-        body: JSON.stringify(data),
-    });
+  return apiFetch<any>('/notes', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 };
 
 export const updateNote = async (id: string, data: { title?: string, content?: string, isPinned?: boolean }): Promise<any> => {
-    return apiFetch<any>(`/notes/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-    });
+  return apiFetch<any>(`/notes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
 };
 
 export const deleteNote = async (id: string): Promise<void> => {
-    return apiFetch<void>(`/notes/${id}`, {
-        method: 'DELETE',
-    });
+  return apiFetch<void>(`/notes/${id}`, {
+    method: 'DELETE',
+  });
 };
 
 export const updateDonor = async (id: string, data: Partial<Donor>): Promise<Donor> => {
-    return apiFetch<Donor>(`/donors/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-    });
+  return apiFetch<Donor>(`/donors/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
 };
 
 export const updateSponsorDonation = async (id: string, data: Partial<SponsorDonation>): Promise<SponsorDonation> => {
-    return apiFetch<SponsorDonation>(`/sponsor-donations/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-    });
+  return apiFetch<SponsorDonation>(`/sponsor-donations/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
 };
 
 // Settings functions
 export const getSettings = async (): Promise<any> => {
-    return apiFetch<any>('/settings');
+  return apiFetch<any>('/settings');
 };
 
 export const updateSettings = async (data: { globalGoal?: number, campaignName?: string }): Promise<any> => {
-    return apiFetch<any>('/settings', {
-        method: 'PUT',
-        body: JSON.stringify(data),
-    });
+  return apiFetch<any>('/settings', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
 };
 
