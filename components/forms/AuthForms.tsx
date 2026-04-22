@@ -173,7 +173,7 @@ export const LoginForm = () => {
             <Input
               label="Email Admin"
               type="email"
-              value="admin@nova.io"
+              value="ttnmission@contact.com"
               disabled
             />
             <Input
